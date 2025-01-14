@@ -1,20 +1,11 @@
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::str::FromStr;
 use std::fmt::Display;
+use std::str::FromStr;
 use std::fs::{ File, OpenOptions };
 use std::io::{ self, BufRead, BufReader, Write };
-
-pub trait LRUCache<K, V> {
-    fn put(&mut self, key: K, value: V);
-    fn get(&mut self, key: &K) -> Option<&V>;
-}
-
-#[derive(Debug)]
-struct Node<K> {
-    prev: Option<K>,
-    next: Option<K>,
-}
+use super::node::Node;
+use super::LRUCache;
 
 #[derive(Debug)]
 pub struct Cache<K: Eq + Hash + Clone + Display + FromStr, V: Display + FromStr> {
