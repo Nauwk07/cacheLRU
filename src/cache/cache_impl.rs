@@ -7,6 +7,29 @@ use std::io::{ self, BufRead, BufReader, Write };
 use super::node::Node;
 use super::LRUCache;
 
+/// Cache LRU (Least Recently Used) avec support optionnel de persistance
+///
+/// # Type Parameters
+///
+/// * `K` - Le type de la clé, doit implémenter `Eq + Hash + Clone + Display + FromStr`
+/// * `V` - Le type de la valeur, doit implémenter `Display + FromStr`
+///
+/// # Examples
+///
+/// ```
+/// use cache_lru::cache::{Cache, LRUCache};
+///
+/// // Création d'un cache simple
+/// let mut cache = Cache::<String, i32>::new(2);
+/// cache.put("A".to_string(), 1);
+/// cache.put("B".to_string(), 2);
+///
+/// assert_eq!(cache.get(&"A".to_string()), Some(&1));
+///
+/// // Le cache supprime automatiquement les éléments les moins utilisés
+/// cache.put("C".to_string(), 3);
+/// assert_eq!(cache.get(&"B".to_string()), None);
+/// ```
 #[derive(Debug)]
 pub struct Cache<K: Eq + Hash + Clone + Display + FromStr, V: Display + FromStr> {
     capacity: usize,
@@ -17,6 +40,18 @@ pub struct Cache<K: Eq + Hash + Clone + Display + FromStr, V: Display + FromStr>
 }
 
 impl<K: Eq + Hash + Clone + Display + FromStr, V: Display + FromStr> Cache<K, V> {
+    /// Crée un nouveau cache avec une capacité donnée
+    ///
+    /// # Arguments
+    ///
+    /// * `capacity` - Nombre maximum d'éléments dans le cache
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use cache_lru::cache::Cache;
+    /// let cache = Cache::<String, i32>::new(3);
+    /// ```
     pub fn new(capacity: usize) -> Self {
         Cache {
             map: HashMap::new(),
@@ -27,6 +62,26 @@ impl<K: Eq + Hash + Clone + Display + FromStr, V: Display + FromStr> Cache<K, V>
         }
     }
 
+    /// Crée un nouveau cache persistant avec une capacité donnée
+    ///
+    /// Le cache sera automatiquement sauvegardé dans le fichier spécifié
+    /// après chaque modification.
+    ///
+    /// # Arguments
+    ///
+    /// * `capacity` - Nombre maximum d'éléments dans le cache
+    /// * `filename` - Chemin du fichier de persistance
+    ///
+    /// # Returns
+    ///
+    /// * `io::Result<Self>` - Le cache créé ou une erreur
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use cache_lru::cache::Cache;
+    /// let cache = Cache::<String, i32>::new_persistent(3, "cache.txt").unwrap();
+    /// ```
     pub fn new_persistent(capacity: usize, filename: &str) -> io::Result<Self> {
         let mut cache = Cache {
             capacity,
@@ -53,6 +108,15 @@ impl<K: Eq + Hash + Clone + Display + FromStr, V: Display + FromStr> Cache<K, V>
         Ok(cache)
     }
 
+    /// Sauvegarde le contenu du cache dans un fichier
+    ///
+    /// # Arguments
+    ///
+    /// * `filename` - Chemin du fichier de sauvegarde
+    ///
+    /// # Returns
+    ///
+    /// * `io::Result<()>` - Ok si la sauvegarde réussit, Err sinon
     pub fn save_to_file(&self, filename: &str) -> io::Result<()> {
         let mut file = OpenOptions::new().write(true).create(true).truncate(true).open(filename)?;
 
@@ -63,6 +127,7 @@ impl<K: Eq + Hash + Clone + Display + FromStr, V: Display + FromStr> Cache<K, V>
         Ok(())
     }
 
+    /// Supprime un nœud de la liste chaînée
     fn remove_node(&mut self, key: &K) {
         if let Some((_, node)) = self.map.get(key) {
             let prev = node.prev.clone();
@@ -102,6 +167,7 @@ impl<K: Eq + Hash + Clone + Display + FromStr, V: Display + FromStr> Cache<K, V>
         }
     }
 
+    /// Supprime le nœud en queue de liste
     fn remove_tail(&mut self) {
         if let Some(tail_key) = self.tail.clone() {
             self.remove_node(&tail_key);
@@ -109,6 +175,7 @@ impl<K: Eq + Hash + Clone + Display + FromStr, V: Display + FromStr> Cache<K, V>
         }
     }
 
+    /// Ajoute un nœud en tête de liste
     fn add_to_head(&mut self, key: K) {
         if let Some(old_head) = self.head.clone() {
             if let Some((_, node)) = self.map.get_mut(&old_head) {
@@ -126,6 +193,7 @@ impl<K: Eq + Hash + Clone + Display + FromStr, V: Display + FromStr> Cache<K, V>
         self.head = Some(key);
     }
 
+    /// Déplace un nœud existant en tête de liste
     fn move_to_head(&mut self, key: &K) {
         if self.head.as_ref() != Some(key) {
             let key_clone = key.clone();
