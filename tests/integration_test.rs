@@ -8,6 +8,8 @@ fn test_basic_operations() {
     assert_eq!(cache.get(&"a".to_string()), Some(&1));
     cache.put("c".to_string(), 3);
     assert_eq!(cache.get(&"b".to_string()), None);
+    assert_eq!(cache.get(&"a".to_string()), Some(&1));
+    assert_eq!(cache.get(&"c".to_string()), Some(&3));
 }
 
 #[test]
@@ -25,8 +27,10 @@ fn test_capacity() {
 fn test_update_existing() {
     let mut cache = Cache::<String, i32>::new(2);
     cache.put("A".to_string(), 1);
-    cache.put("A".to_string(), 2);
-    assert_eq!(cache.get(&"A".to_string()), Some(&2));
+    cache.put("B".to_string(), 2);
+    cache.put("A".to_string(), 3);
+    assert_eq!(cache.get(&"A".to_string()), Some(&3));
+    assert_eq!(cache.get(&"B".to_string()), Some(&2));
 }
 
 #[test]
